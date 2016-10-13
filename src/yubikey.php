@@ -36,13 +36,10 @@ function compareYubikey($ykey, $idCompare){
 
     if(isYubikey($ykey)) {
 
-        // Check if idCompare is hashed or not
         $HashedCompare = substr($idCompare, 0, 4) === '$2y$';
 
-        // Check if have more than one idComare (array)
         $idCompare = is_array($idCompare) === false ? [$idCompare] : $idCompare;
 
-        // Get the id from OTP key
         $idKey = getYubikey($ykey);
 
         for($loop = 0; $loop < count($idCompare); $loop++){
@@ -111,37 +108,41 @@ function curlYubikey(array $url, $https){
 }
 
 function checkYubikey(array $ykey, $protocol = 'https://', $hosts = ['api.yubico.com/wsapi/2.0/verify', 'api2.yubico.com/wsapi/2.0/verify', 'api3.yubico.com/wsapi/2.0/verify', 'api4.yubico.com/wsapi/2.0/verify', 'api5.yubico.com/wsapi/2.0/verify']){
-
+    
     $return = false;
+    
+    if(isYubikey($ykey)) {
+    
+        $params = ['id' => $ykey['client_id'], 'nonce' => $ykey['nonce'], 'otp' => $ykey['otp']];
+        ksort($params);
+        $params = http_build_query($params);
 
-    $params = ['id' => $ykey['client_id'], 'nonce' => $ykey['nonce'], 'otp' => $ykey['otp']];
-    ksort($params);
-    $params = http_build_query($params);
-
-    $sig = str_replace('%3A', ':', $params);
-    $sig = utf8_encode($sig);
-    $sig = hash_hmac('sha1', $sig , $ykey['secret_key'], true);
-    $sig = base64_encode($sig);
-    $sig = preg_replace('/\+/', '%2B', $sig);
-
-
-    if(is_array($hosts) === false){
-        $hosts = explode(',', $hosts);
-    }
-
-    foreach($hosts as $host){
-        $url[] = $protocol . $host . (strpos($host, '?') !== false ? '&' : '?') . $params . '&h=' . $sig;
-    }
+        $sig = str_replace('%3A', ':', $params);
+        $sig = utf8_encode($sig);
+        $sig = hash_hmac('sha1', $sig , $ykey['secret_key'], true);
+        $sig = base64_encode($sig);
+        $sig = preg_replace('/\+/', '%2B', $sig);
 
 
-    if(isset($url) && $curl = curlYubikey($url, $protocol)){
-
-        if(preg_match("/status=OK/", $curl) && preg_match("/otp=".$ykey['otp']."/", $curl) && preg_match("/nonce=".$ykey['nonce']."/", $curl)){
-
-            $return = true;
-
+        if(is_array($hosts) === false){
+            $hosts = explode(',', $hosts);
         }
 
+        foreach($hosts as $host){
+            $url[] = $protocol . $host . (strpos($host, '?') !== false ? '&' : '?') . $params . '&h=' . $sig;
+        }
+
+
+        if(isset($url) && $curl = curlYubikey($url, $protocol)){
+
+            if(preg_match("/status=OK/", $curl) && preg_match("/otp=".$ykey['otp']."/", $curl) && preg_match("/nonce=".$ykey['nonce']."/", $curl)){
+
+                $return = true;
+
+            }
+
+        }
+        
     }
 
     return $return;
