@@ -40,7 +40,7 @@ Compare the id of input and the database (needed when the user login to verify t
 $yubikey_id = compareYubikey($yubikey, $database_response['yubikey_id']);
 ```
 
-Exemples:
+Examples
 -----
 
 Adding a Yubikey into account:
